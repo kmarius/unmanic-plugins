@@ -3,13 +3,10 @@ name: Unmanic Plugin Test and Generate Repo
 on:
   push:
     branches:
-      - '**'
-      - 'pr-**'
-      - '!template'
+      - 'dev'
   pull_request:
     branches:
-      - 'official'
-      - 'master'
+      - 'dev'
 
 jobs:
 
@@ -210,13 +207,13 @@ jobs:
       run: |
         python ./scripts/generate_repository.py
 
-    # Deploy to repo branch
+    # Deploy to repo-dev branch
     - name: Deploy repository
-      if: success() && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/official')
+      if: success() && (github.ref == 'refs/heads/dev')
       uses: s0/git-publish-subdir-action@develop
       env:
         REPO: self
-        BRANCH: repo
+        BRANCH: repo-dev
         FOLDER: repo
         SQUASH_HISTORY: true
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
