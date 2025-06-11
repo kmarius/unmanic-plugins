@@ -63,14 +63,15 @@ def on_worker_process(data):
     del kmarius_data[path]
 
     probe = kmarius.get("probe")
-
     abspath = data.get('file_in')
 
     mapper = PluginStreamMapper(kmarius.get("mappings", {}))
     mapper.set_default_values(None, abspath, probe)
-    needs_remux = kmarius.get("needs_remux", False)
 
-    if mapper.streams_need_processing() or needs_remux:
+    needs_remux = kmarius.get("needs_remux", False)
+    needs_moov = kmarius.get("moov_to_front", False)
+
+    if mapper.streams_need_processing() or needs_remux or needs_moov:
         mapper.set_input_file(abspath)
 
         if needs_remux:
@@ -82,8 +83,11 @@ def on_worker_process(data):
             mapper.set_output_file(data.get('file_out'))
 
         #  "-map", "-0:t", used in old script but fails here
-        mapper.main_options += ["-map_metadata", "-1",
-                                "-map_chapters", "-1", "-movflags", "+faststart"]
+        mapper.main_options += ["-map_metadata", "-1", "-map_chapters", "-1"]
+
+        # we always want moov at front
+        mapper.main_options += ["-movflags", "+faststart"]
+
         ffmpeg_args = mapper.get_ffmpeg_args()
 
         data['exec_command'] = ['ffmpeg']
