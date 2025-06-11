@@ -206,6 +206,7 @@ jobs:
       id: generate_repo
       run: |
         python ./scripts/generate_repository.py
+        sed -i 's|/repo/|/repo-dev/|g' repo/repo.json
 
     # Deploy to repo-dev branch
     - name: Deploy repository
