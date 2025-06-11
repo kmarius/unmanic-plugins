@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import json
 import logging
 import subprocess
-
 import shutil
 
 from kmarius.lib import lazy_init
@@ -20,7 +20,6 @@ def on_library_management_file_test(data):
     # check fail itself for metadata
     tags = probe.get("format", {}).get("tags", {})
     if "title" in tags or "comment" in tags:
-        logger.info("found metadata in file")
         kmarius["has_metadata"] = True
         kmarius["add_file_to_pending_tasks"] = True
 
@@ -39,12 +38,12 @@ def on_library_management_file_test(data):
     for track in mediainfo.get("media", {}).get("track", []):
         # TODO: we are removing title, name, comment, handler_name, vendor_id and should probably als check these here
         if "Title" in track or "Comment" in track:
-            logger.info("found metadata in track")
             has_track_metadata = True
             break
 
     if has_track_metadata:
         kmarius["add_file_to_pending_tasks"] = True
+        kmarius["has_metadata"] = True
 
         # check all streams for metadata
         streams = {}
@@ -55,10 +54,10 @@ def on_library_management_file_test(data):
             streams[stream_type].append(stream_info)
 
         chars = {
-            'video':      'v',
-            'audio':      'a',
-            'subtitle':   's',
-            'data':       'd',
+            'video': 'v',
+            'audio': 'a',
+            'subtitle': 's',
+            'data': 'd',
             'attachment': 'a',
         }
 
@@ -71,7 +70,6 @@ def on_library_management_file_test(data):
             stream_mapping = mappings[stream_type]
             c = chars[stream_type]
             for i, stream_info in enumerate(streams[stream_type]):
-                logger.info(f"modifying {stream_type} {i}")
                 if i in stream_mapping:
                     mapping = stream_mapping[i]
                     # len == 0 means streams are removed
@@ -85,7 +83,7 @@ def on_library_management_file_test(data):
                         ]
                 else:
                     stream_mapping[i] = {
-                        'stream_mapping':  ['-map', f'0:{c}:{i}'],
+                        'stream_mapping': ['-map', f'0:{c}:{i}'],
                         'stream_encoding': [
                             f"-c:{c}:{i}", "copy",
                             f"-metadata:s:a:{i}", "title=",
@@ -95,4 +93,11 @@ def on_library_management_file_test(data):
                             f"-metadata:s:a:{i}", "vendor_id=",
                         ],
                     }
+
+    if kmarius.get("has_metadata", False):
+        data["issues"].append({
+            "id": "kmarius_metadata_handler",
+            "message": f"metadata found: {path}"
+        })
+
     return data
