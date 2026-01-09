@@ -1,45 +1,61 @@
 import sqlite3
 import os
+import logging
 
 from unmanic.libs import common
 
 # TODO: function to clean up orphans
+# TODO: shouldn't have to create a new connection for every operation
+
+logger = logging.getLogger("Unmanic.Plugin.kmarius_incremental_scan_db")
 
 DB_PATH = os.path.join(common.get_home_dir(), ".unmanic",
                        "userdata", "kmarius_incremental_scan_db", "timestamps.db")
 
 
+def check_column_exists(conn, table_name, column_name):
+    cursor = conn.cursor()
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = cursor.fetchall()
+
+    return any(column[1] == column_name for column in columns)
+
+
+# check the database table, create it if it doesn't exist.
+# migration for the addition of a column consists of dropping the table
+def check_database():
+    conn = sqlite3.connect(DB_PATH)
+    with conn:
+        cursor = conn.cursor()
+        if not check_column_exists(conn, "timestamps", "library_id"):
+            logger.info("Table 'timestamps' does not exists or is missing the 'library_id' column. (Re-)creating...")
+            cursor.execute("DROP TABLE IF EXISTS timestamps")
+        cursor.execute('''
+                       CREATE TABLE IF NOT EXISTS timestamps(
+                           library_id INTEGER NULL,
+                           path TEXT NOT NULL,
+                           mtime INTEGER NOT NULL,
+                           PRIMARY KEY (library_id,path)
+                        )''')
+    conn.close()
+
+check_database()
+
+
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
-    setup(conn)
     return conn
 
 
-def setup(conn):
-    cursor = conn.cursor()
-    cursor.execute('''
-                   CREATE TABLE IF NOT EXISTS timestamps
-                   (
-                       path
-                       TEXT
-                       PRIMARY
-                       KEY,
-                       mtime
-                       INTEGER
-                       NOT
-                       NULL
-                   )''')
-
-
-def store_timestamp(path, mtime):
+def store_timestamp(library_id, path, mtime):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute('''
-                INSERT INTO timestamps (path, mtime)
-                VALUES (?, ?) ON CONFLICT(path) DO
+                INSERT INTO timestamps (library_id, path, mtime)
+                VALUES (?, ?, ?) ON CONFLICT(library_id, path) DO
                 UPDATE SET
                     mtime = excluded.mtime
-                ''', (path, mtime))
+                ''', (library_id, path, mtime))
     conn.commit()
     conn.close()
 
@@ -48,8 +64,8 @@ def store_timestamps(values):
     conn = get_connection()
     cur = conn.cursor()
     cur.executemany('''
-                    INSERT INTO timestamps (path, mtime)
-                    VALUES (?, ?) ON CONFLICT(path) DO
+                    INSERT INTO timestamps (library_id, path, mtime)
+                    VALUES (?, ?, ?) ON CONFLICT(library_id, path) DO
                     UPDATE SET
                         mtime = excluded.mtime
                     ''', values)
@@ -57,24 +73,26 @@ def store_timestamps(values):
     conn.close()
 
 
-def load_timestamp(path):
+def load_timestamp(library_id, path):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT mtime FROM timestamps WHERE path = ?", (path,))
+    cur.execute("SELECT mtime FROM timestamps WHERE library_id = ? AND path = ?", (library_id, path))
     row = cur.fetchone()
     mtime = row[0] if row else None
     conn.close()
     return mtime
 
 
-def load_timestamps(paths):
+# we only allow batch loading with fixed library_id
+def load_timestamps(library_id, paths):
     conn = get_connection()
-    cur = conn.cursor()
-    mtimes = []
-    # there's better approaches for this, e.g. a long in (...) expression with all values, or a CTE
-    for path in paths:
-        cur.execute("SELECT mtime FROM timestamps WHERE path = ?", (path,))
-        row = cur.fetchone()
-        mtimes.append(row[0] if row else None)
+    with conn:
+        cur = conn.cursor()
+        mtimes = []
+        # there's better approaches for this, e.g. a long in (...) expression with all values, or a common-table-expression
+        for path in paths:
+            cur.execute("SELECT mtime FROM timestamps WHERE library_id = ? AND path = ?", (library_id, path))
+            row = cur.fetchone()
+            mtimes.append(row[0] if row else None)
     conn.close()
     return mtimes
