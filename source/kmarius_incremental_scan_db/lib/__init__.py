@@ -12,6 +12,9 @@ logger = logging.getLogger("Unmanic.Plugin.kmarius_incremental_scan_db")
 DB_PATH = os.path.join(common.get_home_dir(), ".unmanic",
                        "userdata", "kmarius_incremental_scan_db", "timestamps.db")
 
+if not os.path.exists(os.path.dirname(DB_PATH)):
+    os.makedirs(os.path.dirname(DB_PATH))
+
 
 def check_column_exists(conn, table_name, column_name):
     cursor = conn.cursor()
