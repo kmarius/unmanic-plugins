@@ -24,6 +24,7 @@ def on_library_management_file_test(data):
     path = data.get("path")
     file_stat = os.stat(path)
     timestamp = int(file_stat.st_mtime)
+    logger.info(f"Updating timestamp of {path} to {timestamp}")
     store_timestamp(library_id, path, timestamp)
 
     return data
@@ -36,6 +37,7 @@ def on_postprocessor_task_results(data):
             try:
                 file_stat = os.stat(path)
                 timestamp = int(file_stat.st_mtime)
+                logger.info(f"Updating timestamp of {path} to {timestamp}")
                 store_timestamp(library_id, path, timestamp)
             except Exception as e:
                 logger.error(e)
