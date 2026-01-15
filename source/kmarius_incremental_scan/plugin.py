@@ -5,7 +5,7 @@ import logging
 import os
 
 from unmanic.libs.unplugins.settings import PluginSettings
-from kmarius_incremental_scan_db.lib import load_timestamp, store_timestamp
+from kmarius_incremental_scan_db.lib import load_timestamp
 
 logger = logging.getLogger("Unmanic.Plugin.kmarius_incremental_scan")
 
@@ -24,7 +24,7 @@ class Settings(PluginSettings):
         super(Settings, self).__init__(*args, **kwargs)
 
 
-def on_library_management_file_test(data):
+def on_library_management_file_test(data: dict):
     settings = Settings(library_id=data.get('library_id'))
     if settings.get_setting('ignore_timestamps'):
         return data

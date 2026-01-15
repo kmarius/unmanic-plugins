@@ -16,7 +16,7 @@ if not os.path.exists(os.path.dirname(DB_PATH)):
     os.makedirs(os.path.dirname(DB_PATH))
 
 
-def check_column_exists(conn, table_name, column_name):
+def check_column_exists(conn: sqlite3.Connection, table_name: str, column_name: str):
     cursor = conn.cursor()
     cursor.execute(f"PRAGMA table_info({table_name})")
     columns = cursor.fetchall()
@@ -31,7 +31,8 @@ def check_database():
     with conn:
         cursor = conn.cursor()
         if not check_column_exists(conn, "timestamps", "library_id"):
-            logger.info("Table 'timestamps' does not exists or is missing the 'library_id' column. (Re-)creating...")
+            logger.info(
+                "Table 'timestamps' does not exists or is missing the 'library_id' column. (Re-)creating...")
             cursor.execute("DROP TABLE IF EXISTS timestamps")
         cursor.execute('''
                        CREATE TABLE IF NOT EXISTS timestamps(
@@ -42,15 +43,16 @@ def check_database():
                         )''')
     conn.close()
 
+
 check_database()
 
 
-def get_connection():
+def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     return conn
 
 
-def store_timestamp(library_id, path, mtime):
+def store_timestamp(library_id: int, path: str, mtime: int):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute('''
@@ -63,7 +65,7 @@ def store_timestamp(library_id, path, mtime):
     conn.close()
 
 
-def store_timestamps(values):
+def store_timestamps(values: list[(int, str, int)]):
     conn = get_connection()
     cur = conn.cursor()
     cur.executemany('''
@@ -76,10 +78,11 @@ def store_timestamps(values):
     conn.close()
 
 
-def load_timestamp(library_id, path):
+def load_timestamp(library_id: int, path: str):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT mtime FROM timestamps WHERE library_id = ? AND path = ?", (library_id, path))
+    cur.execute(
+        "SELECT mtime FROM timestamps WHERE library_id = ? AND path = ?", (library_id, path))
     row = cur.fetchone()
     mtime = row[0] if row else None
     conn.close()
@@ -87,14 +90,15 @@ def load_timestamp(library_id, path):
 
 
 # we only allow batch loading with fixed library_id
-def load_timestamps(library_id, paths):
+def load_timestamps(library_id: int, paths: list[str]):
     conn = get_connection()
     with conn:
         cur = conn.cursor()
         mtimes = []
         # there's better approaches for this, e.g. a long in (...) expression with all values, or a common-table-expression
         for path in paths:
-            cur.execute("SELECT mtime FROM timestamps WHERE library_id = ? AND path = ?", (library_id, path))
+            cur.execute(
+                "SELECT mtime FROM timestamps WHERE library_id = ? AND path = ?", (library_id, path))
             row = cur.fetchone()
             mtimes.append(row[0] if row else None)
     conn.close()
