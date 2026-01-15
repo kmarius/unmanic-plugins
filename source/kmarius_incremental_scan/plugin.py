@@ -39,7 +39,7 @@ def on_library_management_file_test(data):
         data['add_file_to_pending_tasks'] = False
         data["issues"].append({
             'id': "kmarius_incremental_scan",
-            'message': f"file unchanged: {path}"
+            'message': f"file unchanged: {path}, library_id={library_id}"
         })
 
     return data
