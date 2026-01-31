@@ -1,16 +1,15 @@
 {
-  "author": "kmarius",
-  "compatibility": [
-    2
-  ],
-  "description": "Updates timestamp database to allow for incremental library scans.",
-  "icon": "https://avatars.githubusercontent.com/u/5224719?s=96&v=4",
-  "id": "kmarius_incremental_scan_db",
-  "name": "Incremental Library Scan - DB Updater",
-  "priorities": {
-    "on_library_management_file_test": 100,
-    "on_postprocessor_task_results": 100
-  },
-  "tags": "library file test",
-  "version": "0.1.4"
+    "author": "kmarius",
+    "compatibility": [
+        2
+    ],
+    "description": "Updates timestamp database to allow for incremental library scans.",
+    "icon": "https://avatars.githubusercontent.com/u/5224719?s=96&v=4",
+    "id": "kmarius_incremental_scan_db",
+    "name": "Incremental Library Scan - DB Updater",
+    "priorities": {
+        "on_library_management_file_test": 100
+    },
+    "tags": "library file test",
+    "version": "0.2.0"
 }

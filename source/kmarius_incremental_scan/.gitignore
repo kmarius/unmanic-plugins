@@ -2,3 +2,4 @@
 *.py[cod]
 **/site-packages
 settings.json
+kmarius_incremental_scan
