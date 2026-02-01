@@ -27,6 +27,7 @@ def check_column_exists(conn: sqlite3.Connection, table_name: str, column_name: 
 # migration for the addition of a column consists of dropping the table
 def init():
     # attempt to migrate old database from the sibling plugin
+    # remove this a year after discontinuing the other plugin
     if not os.path.exists(DB_PATH):
         old_db = os.path.join(common.get_home_dir(), ".unmanic",
                               "userdata", "kmarius_incremental_scan_db", "timestamps.db")
@@ -135,11 +136,12 @@ def remove_paths(library_id: int, paths: list[str]):
     conn = _get_connection()
     cur = conn.cursor()
     # one by one is good enough for now, I don't think we can use CTEs from python
-    for path in paths:
-        cur.execute('''
-                    DELETE
-                    FROM timestamps
-                    WHERE library_id = ?
-                      AND path = ?
-                    ''', (library_id, path))
-    conn.commit()
+    with conn:
+        for path in paths:
+            cur.execute('''
+                        DELETE
+                        FROM timestamps
+                        WHERE library_id = ?
+                          AND path = ?
+                        ''', (library_id, path))
+        conn.commit()
