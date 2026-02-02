@@ -1,6 +1,7 @@
 import json
 import os
 import queue
+import re
 import threading
 import time
 import traceback
@@ -173,24 +174,43 @@ def _test_files_thread(items_per_lib: Mapping[int, Set[str]]):
 
 class Panel:
     # we pass the settings class and create the instances for different libraries as needed
-    def __init__(self, settings_class):
-        self.Settings = settings_class
+    def __init__(self, settings):
+        self.settings = settings
         # we can cache some things meaningfully. allowed extensions for example, because when they change plugin.py is
         # re-executed and the Panel is re-created
         self._allowed_extensions = {}
-
-    def _get_allowed_extensions(self, library_id: int) -> list[str]:
-        if library_id not in self._allowed_extensions:
-            settings = self.Settings(library_id=library_id)
-            extensions = settings.get_setting("allowed_extensions").split(",")
-            extensions = [ext.strip().lstrip(".") for ext in extensions]
-            self._allowed_extensions[library_id] = extensions
-        return self._allowed_extensions[library_id]
+        self._ignore_patterns = {}
 
     def _is_extension_allowed(self, library_id: int, path: str) -> bool:
-        extensions = self._get_allowed_extensions(library_id)
+        if library_id not in self._allowed_extensions:
+            extensions = self.settings.get_setting(f"library_{library_id}_extensions").split(",")
+            extensions = [ext.strip().lstrip(".") for ext in extensions]
+            extensions = [ext for ext in extensions if ext != ""]
+            if len(extensions) == 0:
+                extensions = None
+            self._allowed_extensions[library_id] = extensions
+        extensions = self._allowed_extensions[library_id]
+        if not extensions:
+            return True
         _, ext = os.path.splitext(path)
-        return ext.lstrip(".").lower() in extensions
+        ext = ext.lstrip(".").lower()
+        return ext in extensions
+
+    def _is_path_ignored(self, library_id: int, path: str) -> bool:
+        if library_id not in self._ignore_patterns:
+            patterns = []
+            for pattern in self.settings.get_setting(f"library_{library_id}_ignored_paths").splitlines():
+                pattern = pattern.strip()
+                if pattern != "" and not pattern.startswith("#"):
+                    patterns.append(re.compile(pattern))
+            self._ignore_patterns[library_id] = patterns
+        for pattern in self._ignore_patterns[library_id]:
+            if pattern.search(path):
+                return True
+        return False
+
+    def _is_in_library(self, library_id: int, path: str) -> bool:
+        return self._is_extension_allowed(library_id, path) and not self._is_path_ignored(library_id, path)
 
     def _test_files(self, payload: dict):
         library_paths = _get_library_paths()
@@ -215,7 +235,7 @@ class Panel:
             if os.path.isdir(path):
                 items_ = items_per_lib[library_id]
                 for path in _expand_path(path):
-                    if self._is_extension_allowed(library_id, path):
+                    if self._is_in_library(library_id, path):
                         items_.add(path)
             else:
                 items_per_lib[library_id].add(path)
@@ -252,7 +272,7 @@ class Panel:
             if os.path.isdir(path):
                 items_ = items_per_lib[library_id]
                 for path in _expand_path(path):
-                    if self._is_extension_allowed(library_id, path):
+                    if self._is_in_library(library_id, path):
                         items_.append(
                             {"path": path, "priority_score": priority_score})
             else:
@@ -265,50 +285,61 @@ class Panel:
                     item['path'], library_id, item['priority_score'])
 
     # this function can't load single files currently, only directories with their files
-    def _load_subtree(self, path: str, title: str, library_id: int, lazy=True, get_timestamps=False) -> dict:
+    def _load_subtree(self, path: str, title: str, library_id: int, lazy=True, hide_empty=False,
+                      prune_ignored=False, timestamp_cache=None) -> dict:
         children = []
         files = []
 
-        with os.scandir(path) as entries:
-            for entry in entries:
-                name = entry.name
-                if name.startswith("."):
-                    continue
-                abspath = os.path.abspath(os.path.join(path, name))
-                if entry.is_dir():
-                    if lazy:
-                        children.append({
-                            "title":      name,
-                            "library_id": library_id,
-                            "path":       abspath,
-                            "lazy":       True,
-                            "type":       "folder",
-                        })
-                    else:
-                        children.append(self._load_subtree(
-                            abspath, name, library_id, lazy=False, get_timestamps=get_timestamps))
+        if not (prune_ignored and self._is_path_ignored(library_id, path)):
+            with os.scandir(path) as entries:
+                for entry in entries:
+                    name = entry.name
+                    if name.startswith("."):
+                        continue
+
+                    abspath = os.path.abspath(os.path.join(path, name))
+
+                    if not (prune_ignored and self._is_path_ignored(library_id, abspath)):
+                        if entry.is_dir():
+                            if lazy:
+                                children.append({
+                                    "title":      name,
+                                    "library_id": library_id,
+                                    "path":       abspath,
+                                    "lazy":       True,
+                                    "type":       "folder",
+                                })
+                            else:
+                                child = self._load_subtree(abspath, name, library_id,
+                                                           lazy=False, hide_empty=hide_empty,
+                                                           prune_ignored=prune_ignored, timestamp_cache=timestamp_cache)
+                                if not (hide_empty and len(child["children"]) == 0):
+                                    children.append(child)
+                        else:
+                            if self._is_in_library(library_id, abspath):
+                                file_info = os.stat(abspath)
+                                files.append({
+                                    "title":      name,
+                                    "library_id": library_id,
+                                    "path":       abspath,
+                                    "mtime":      int(file_info.st_mtime),
+                                    "size":       int(file_info.st_size),
+                                    "icon":       _get_icon(name),
+                                })
+
+            children.sort(key=lambda c: c["title"])
+            files.sort(key=lambda c: c["title"])
+
+            if len(files) > 0:
+                if timestamp_cache:
+                    for file in files:
+                        file["timestamp"] = timestamp_cache.get(file["path"], None)
                 else:
-                    if self._is_extension_allowed(library_id, name):
-                        file_info = os.stat(abspath)
-                        files.append({
-                            "title":      name,
-                            "library_id": library_id,
-                            "path":       abspath,
-                            "mtime":      int(file_info.st_mtime),
-                            "size":       int(file_info.st_size),
-                            "icon":       _get_icon(name),
-                        })
+                    paths = [file["path"] for file in files]
+                    for i, timestamp in enumerate(timestamps.get_many(library_id, paths)):
+                        files[i]['timestamp'] = timestamp
 
-        children.sort(key=lambda c: c["title"])
-        files.sort(key=lambda c: c["title"])
-
-        # getting timestamps in bulk makes the operation >5 times faster
-        if get_timestamps:
-            paths = [file["path"] for file in files]
-            for i, timestamp in enumerate(timestamps.get_many(library_id, paths)):
-                files[i]['timestamp'] = timestamp
-
-        children += files
+            children += files
 
         return {
             "title":      title,
@@ -318,7 +349,7 @@ class Panel:
             "type":       "folder",
         }
 
-    def _get_subtree(self, arguments: dict, lazy=True) -> dict:
+    def _get_subtree(self, arguments: dict) -> dict:
         library_id = int(arguments["library_id"][0])
         path = arguments["path"][0].decode('utf-8')
         title = arguments["title"][0].decode('utf-8')
@@ -331,7 +362,17 @@ class Panel:
         if not path.startswith(library.path) or "/.." in path:
             raise Exception("Invalid path")
 
-        return self._load_subtree(path, title, library_id, lazy=lazy, get_timestamps=True)
+        lazy = self.settings.get_setting(f"library_{library.id}_lazy_load")
+        hide_empty = self.settings.get_setting(f"library_{library_id}_hide_empty")
+        prune_ignored = self.settings.get_setting(f"library_{library_id}_prune_ignored")
+
+        # if we are loading an entire library it is much faster to create a hashmap of all files and timestamps
+        timestamp_cache = None
+        if not lazy and path == library.path:
+            timestamp_cache = timestamps.get_all(library_id)
+
+        return self._load_subtree(path, title, library_id, lazy=lazy, hide_empty=hide_empty,
+                                  prune_ignored=prune_ignored, timestamp_cache=timestamp_cache)
 
     def _reset_timestamps(self, payload: dict):
         if "arr" in payload:
@@ -347,7 +388,7 @@ class Panel:
             else:
                 distinct.add((library_id, path))
         values = [(library_id, path, 0) for library_id, path in distinct if
-                  self._is_extension_allowed(library_id, path)]
+                  self._is_in_library(library_id, path)]
 
         timestamps.put_many(values)
 
@@ -365,7 +406,7 @@ class Panel:
             else:
                 distinct.add((library_id, path))
         items = [(library_id, path) for library_id,
-        path in distinct if self._is_extension_allowed(library_id, path)]
+        path in distinct if self._is_in_library(library_id, path)]
 
         values = []
         for library_id, path in items:
@@ -393,7 +434,7 @@ class Panel:
 
             paths = []
             for path in timestamps.get_all_paths(library_id):
-                if not self._is_extension_allowed(library_id, path) or not os.path.exists(path):
+                if not self._is_in_library(library_id, path) or not os.path.exists(path):
                     paths.append(path)
 
             timestamps.remove_paths(library_id, paths)
@@ -422,7 +463,10 @@ class Panel:
             elif path == '/process':
                 self._process_files(json.loads(data["body"].decode('utf-8')))
             elif path == '/subtree':
-                data["content"] = self._get_subtree(data["arguments"], False)
+                t0 = time.time()
+                data["content"] = self._get_subtree(data["arguments"])
+                t1 = time.time()
+                logger.info(f"Processing subtree took {(t1 - t0) * 1000:.2f} ms")
             elif path == "/libraries":
                 data["content"] = _get_libraries()
             elif path == "/timestamp/reset":

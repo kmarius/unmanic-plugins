@@ -1,12 +1,11 @@
 import sqlite3
 import os
 from threading import local
+from typing import Mapping, Tuple
 
 from unmanic.libs import common
 from . import logger, PLUGIN_ID
 
-# TODO: function to clean up orphans
-# TODO: shouldn't have to create a new connection for every operation
 
 DB_PATH = os.path.join(common.get_home_dir(), ".unmanic",
                        "userdata", PLUGIN_ID, "timestamps.db")
@@ -107,7 +106,8 @@ def get_many(library_id: int, paths: list[str]):
     with conn:
         cur = conn.cursor()
         mtimes = []
-        # there's better approaches for this, e.g. a long in (...) expression with all values, or a common-table-expression
+
+        # I tested this with a temp relation instead of a loop and int was faster at > 15 items per query
         for path in paths:
             cur.execute(
                 "SELECT mtime FROM timestamps WHERE library_id = ? AND path = ?", (library_id, path))
@@ -130,6 +130,18 @@ def get_all_paths(library_id: int = None) -> list[str]:
                        FROM timestamps''')
     paths = [path[0] for path in cur.fetchall()]
     return paths
+
+
+# we directly construct the map here instead of returning a list and creating the map from that
+def get_all(library_id: int) -> Mapping[str, int]:
+    conn = _get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+                SELECT path, mtime
+                FROM timestamps
+                WHERE library_id = ?
+                ''', (library_id,))
+    return dict(cur)
 
 
 def remove_paths(library_id: int, paths: list[str]):

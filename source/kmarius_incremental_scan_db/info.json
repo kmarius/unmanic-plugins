@@ -8,8 +8,8 @@
     "id": "kmarius_incremental_scan_db",
     "name": "Incremental Library Scan - DB Updater",
     "priorities": {
-        "on_library_management_file_test": 100
+        "on_library_management_file_test": 1000
     },
     "tags": "library file test",
-    "version": "0.2.0"
+    "version": "0.3.0"
 }

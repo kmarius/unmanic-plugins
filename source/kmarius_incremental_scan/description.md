@@ -1,8 +1,8 @@
 # Incremental Library Scan
 
-Perform incremental library scans by skipping unchanged files.
+Perform incremental library scans by skipping unchanged files. The plugin `Incremental Library Scan - DB Updater` is also required for functionality.
 
-This plugin should be placed early in the `File test` pipeline, but after plugins that skip based on extension or paths. Only works in combination with `Incremental Library Scan - DB Updater`.
+This plugin should be placed early in the `File test` pipeline, but after plugins that skip based on extension or paths. 
 
 This plugin includes an experimental Data Panel that allows you to view files in your libraries and their timestamps in the database. It also allows you to test/process individual files and folders. Expect this to break with future updates.
 
