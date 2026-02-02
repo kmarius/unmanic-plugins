@@ -1,3 +1,6 @@
+**<span style="color:#56adda">0.4.1</span>**
+- fix a bug where newly created libraries wouldn't load in the panel
+
 **<span style="color:#56adda">0.4.0</span>**
 - add misc. settings for the panel
 - panel: improve loading times for large libraries

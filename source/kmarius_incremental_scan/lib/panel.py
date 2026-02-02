@@ -50,22 +50,6 @@ def _get_library_paths() -> Mapping[int, str]:
     return paths
 
 
-def _get_libraries(lazy=True) -> dict:
-    libraries = []
-    for lib in Libraries().select().where(Libraries.enable_remote_only == False):
-        libraries.append({
-            "title":      lib.name,
-            "library_id": lib.id,
-            "path":       lib.path,
-            "type":       "folder",
-            "lazy":       lazy,
-        })
-
-    return {
-        "children": libraries,
-    }
-
-
 def _validate_path(path: str, library_path: str) -> bool:
     return path.startswith("/") and "/.." not in path and path.startswith(library_path)
 
@@ -173,9 +157,10 @@ def _test_files_thread(items_per_lib: Mapping[int, Set[str]]):
 
 
 class Panel:
-    # we pass the settings class and create the instances for different libraries as needed
-    def __init__(self, settings):
-        self.settings = settings
+    # we pass the settings class because a library might get added and we need to instantiate the configuration for it
+    def __init__(self, settings_cl):
+        self.settings = settings_cl()
+        self.settings_cl = settings_cl
         # we can cache some things meaningfully. allowed extensions for example, because when they change plugin.py is
         # re-executed and the Panel is re-created
         self._allowed_extensions = {}
@@ -420,6 +405,8 @@ class Panel:
 
     @critical
     def _prune_database(self, payload: dict):
+        self._assert_libraries_configured()
+
         library_ids = []
 
         if "library_id" in payload:
@@ -441,7 +428,32 @@ class Panel:
 
             num_pruned += len(paths)
         logger.info(f"Pruned {num_pruned} orphans")
-        time.sleep(1)
+
+    def _get_libraries(self, lazy=True) -> dict:
+        self._assert_libraries_configured()
+        libraries = []
+        for lib in Libraries().select().where(Libraries.enable_remote_only == False):
+            libraries.append({
+                "title":      lib.name,
+                "library_id": lib.id,
+                "path":       lib.path,
+                "type":       "folder",
+                "lazy":       lazy,
+            })
+
+        return {
+            "children": libraries,
+        }
+
+    # recreate the configuration if a new library is added
+    # it should be fine to do this in _get_libraries and _prune_database, because
+    # there is no other way to access a new library through the panel
+    def _assert_libraries_configured(self):
+        for lib in Libraries().select().where(Libraries.enable_remote_only == False):
+            if not lib.id in self.settings.configured_for:
+                logger.info("recreating config")
+                self.settings = self.settings_cl()
+                return
 
     @staticmethod
     def render_frontend_panel(data: PanelData):
@@ -468,7 +480,7 @@ class Panel:
                 t1 = time.time()
                 logger.info(f"Processing subtree took {(t1 - t0) * 1000:.2f} ms")
             elif path == "/libraries":
-                data["content"] = _get_libraries()
+                data["content"] = self._get_libraries()
             elif path == "/timestamp/reset":
                 self._reset_timestamps(json.loads(data["body"].decode('utf-8')))
             elif path == "/timestamp/update":

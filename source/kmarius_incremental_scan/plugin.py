@@ -14,7 +14,7 @@ class Settings(PluginSettings):
 
     def __init__(self, *args, **kwargs):
         super(Settings, self).__init__(*args, **kwargs)
-        self.settings, self.form_settings = self.__build_settings()
+        self.settings, self.form_settings, self.configured_for = self.__build_settings()
         self._valid_extensions = None
         self._ignore_patterns = None
         # we trick unmanic into using only the global configuration
@@ -122,7 +122,8 @@ class Settings(PluginSettings):
             },
         })
 
-        return settings, form_settings
+        library_ids = [lib[0] for lib in libraries]
+        return settings, form_settings, library_ids
 
     @override
     def get_form_settings(self):
@@ -164,7 +165,7 @@ class Settings(PluginSettings):
 
 
 timestamps.init()
-panel = Panel(Settings())
+panel = Panel(Settings)
 settings = Settings()
 
 
