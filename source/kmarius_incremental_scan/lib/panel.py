@@ -376,6 +376,7 @@ class Panel:
                   self._is_in_library(library_id, path)]
 
         timestamps.put_many(values)
+        logger.info(f"Reset {len(values)} timestamps")
 
     def _update_timestamps(self, payload: dict):
         if "arr" in payload:
@@ -402,6 +403,7 @@ class Panel:
                 logger.error(f"{e}")
 
         timestamps.put_many(values)
+        logger.info(f"Updated {len(values)} timestamps")
 
     @critical
     def _prune_database(self, payload: dict):

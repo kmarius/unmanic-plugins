@@ -1,3 +1,6 @@
+**<span style="color:#56adda">0.4.2</span>**
+- add logging output for updating and resetting timestamps
+
 **<span style="color:#56adda">0.4.1</span>**
 - fix a bug where newly created libraries wouldn't load in the panel
 
