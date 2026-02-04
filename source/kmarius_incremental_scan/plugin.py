@@ -156,7 +156,7 @@ class Settings(PluginSettings):
     def reset_settings_to_defaults(self):
         library_id_str = f"_{self._library_id}_"
 
-        defaults, _ = self.__build_settings()
+        defaults, _, _ = self.__build_settings()
         for setting, value in defaults.items():
             if library_id_str in setting:
                 self.set_setting(setting, value)
