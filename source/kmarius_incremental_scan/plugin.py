@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
-
 import os
 from typing import override
 
 from unmanic.libs.unmodels import Libraries
 from unmanic.libs.unplugins.settings import PluginSettings
+
 from kmarius_incremental_scan.lib.plugin_types import *
 from kmarius_incremental_scan.lib import timestamps, PLUGIN_ID, logger
 from kmarius_incremental_scan.lib.panel import Panel
@@ -33,8 +32,8 @@ class Settings(PluginSettings):
 
         form_settings = {
             "library_id": {
-                "label":          "Select library to configure - These settings only effects the data panel",
-                "input_type":     "select",
+                "label": "Select library to configure - These settings only effects the data panel",
+                "input_type": "select",
                 "select_options": [
                     {"value": library_id, "label": name} for library_id, name in libraries
                 ],
@@ -47,10 +46,10 @@ class Settings(PluginSettings):
         form_settings.update({
             f"library_{library_id}_extensions":
                 {
-                    "label":       "Allowed extensions for this library",
+                    "label": "Allowed extensions for this library",
                     "description": "Leave empty to show all contents. This setting only effects the data panel.",
                     "sub_setting": True,
-                    "display":     "hidden",
+                    "display": "hidden",
                 }
             for library_id, _ in libraries
         })
@@ -61,11 +60,11 @@ class Settings(PluginSettings):
         form_settings.update({
             f"library_{library_id}_ignored_paths":
                 {
-                    "label":       "Ignored path patterns for this library - one per line",
+                    "label": "Ignored path patterns for this library - one per line",
                     "description": "This setting only effects the data panel.",
-                    "input_type":  "textarea",
+                    "input_type": "textarea",
                     "sub_setting": True,
-                    "display":     "hidden",
+                    "display": "hidden",
                 }
             for library_id, _ in libraries
         })
@@ -76,10 +75,10 @@ class Settings(PluginSettings):
         form_settings.update({
             f"library_{library_id}_hide_empty":
                 {
-                    "label":       "Hide empty directories",
+                    "label": "Hide empty directories",
                     "description": "Hide directories e.g. if all its contents are filtered. This setting only effects the data panel.",
                     "sub_setting": True,
-                    "display":     "hidden",
+                    "display": "hidden",
                 }
             for library_id, _ in libraries
         })
@@ -90,10 +89,10 @@ class Settings(PluginSettings):
         form_settings.update({
             f"library_{library_id}_prune_ignored":
                 {
-                    "label":       "Prune directories early when loading libraries",
+                    "label": "Prune directories early when loading libraries",
                     "description": "Prune directories early using the ignored patterns setting. This makes sense if your ignore patterns are meant to match directories. This setting only effects the data panel.",
                     "sub_setting": True,
-                    "display":     "hidden",
+                    "display": "hidden",
                 }
             for library_id, _ in libraries
         })
@@ -104,10 +103,10 @@ class Settings(PluginSettings):
         form_settings.update({
             f"library_{library_id}_lazy_load":
                 {
-                    "label":       "Lazily load files in this library.",
+                    "label": "Lazily load files in this library.",
                     "description": "Load contents of directories only when manually expanded. Can conflict with \"Hide empty directories\". This setting only effects the data panel.",
                     "sub_setting": True,
-                    "display":     "hidden",
+                    "display": "hidden",
                 }
             for library_id, _ in libraries
         })
@@ -117,7 +116,7 @@ class Settings(PluginSettings):
         })
         form_settings.update({
             "quiet_incremental_scan": {
-                "label":       "Reduce logging",
+                "label": "Reduce logging",
                 "description": "Don't log unchanged files and timestamp updates",
             },
         })
@@ -193,7 +192,7 @@ def on_library_management_file_test(data: FileTestData):
     if is_file_unchanged(library_id, path):
         if not quiet:
             data["issues"].append({
-                'id':      PLUGIN_ID,
+                'id': PLUGIN_ID,
                 'message': f"unchanged: library_id={library_id} path={path}",
             })
         data['add_file_to_pending_tasks'] = False
