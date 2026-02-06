@@ -1,0 +1,16 @@
+{
+  "author": "kmarius",
+  "compatibility": [
+    2
+  ],
+  "description": "Cache ffprobe and mediainfo metadata.",
+  "icon": "https://avatars.githubusercontent.com/u/5224719?s=96&v=4",
+  "id": "kmarius_cache_metadata",
+  "name": "Cache Metadata",
+
+  "priorities": {
+    "on_library_management_file_test": 6
+  },
+  "tags": "",
+  "version": "0.0.1"
+}
