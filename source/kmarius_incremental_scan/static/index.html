@@ -66,8 +66,9 @@
         }
 
         function formatFileSize(bytes) {
-            if (!bytes)
+            if (bytes === undefined)
                 return;
+
             const thresh = 1024;
             if (Math.abs(bytes) < thresh) return bytes + ' B';
 
