@@ -5,8 +5,8 @@ Cache `ffprobe` and `mediainfo` metadata to speed up file tests and library scan
 ### How to use
 
 Place this plugin early in your File test pipeline, after all plugins that e.g. skip by extension or Ignore completed tasks, but before plugins
-that use `ffprobe` metadata. Only `ffprobe` is enabled by default, change the plugin settings to enable `mediainfo`
-caching. There's also a setting to disable log output of this plugin.
+that use `ffprobe` metadata. Only `ffprobe` is enabled by default, you can change the plugin settings to enable `mediainfo`
+caching (though I don't think there is a consensus on how to share/use mediainfo data). There's also a setting to disable log output of this plugin.
 
 ### What it does
 
@@ -18,4 +18,4 @@ Retrieving data from this database is much faster than retrieving it from the fi
 
 ### Caveats
 
-It is not yet possible to clear orphans from the database.
+It is not yet possible to clear orphans from the database. Not all plugins support using metadata shared via the `shared_info` dict and will read the metadata from the file. Ask the maintainer nicely to update their plugin, or PR the changes yourself. 
