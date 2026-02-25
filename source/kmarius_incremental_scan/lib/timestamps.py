@@ -6,7 +6,6 @@ from typing import Mapping, Tuple
 from unmanic.libs import common
 from . import logger, PLUGIN_ID
 
-
 DB_PATH = os.path.join(common.get_home_dir(), ".unmanic",
                        "userdata", PLUGIN_ID, "timestamps.db")
 
@@ -20,6 +19,18 @@ def check_column_exists(conn: sqlite3.Connection, table_name: str, column_name: 
     columns = cursor.fetchall()
 
     return any(column[1] == column_name for column in columns)
+
+
+def _perform_maintenance(cur: sqlite3.Cursor, mode: str):
+    if mode == "off":
+        return
+    if mode in ["basic", "full"]:
+        cur.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+        cur.execute('PRAGMA optimize')
+    else:
+        logger.error(f"Unknown UNMANIC_SQLITE_MAINTENANCE mode '{mode}'")
+    if mode == "full":
+        cur.execute('VACUUM')
 
 
 # check the database table, create it if it doesn't exist.
@@ -36,19 +47,26 @@ def init():
 
     conn = sqlite3.connect(DB_PATH)
     with conn:
-        cursor = conn.cursor()
+        cur = conn.cursor()
         if not check_column_exists(conn, "timestamps", "library_id"):
             logger.info(
                 "Table 'timestamps' does not exists or is missing the 'library_id' column. (Re-)creating...")
-            cursor.execute("DROP TABLE IF EXISTS timestamps")
-        cursor.execute('''
-                       CREATE TABLE IF NOT EXISTS timestamps
-                       (
-                           library_id INTEGER NULL,
-                           path       TEXT    NOT NULL,
-                           mtime      INTEGER NOT NULL,
-                           PRIMARY KEY (library_id, path)
-                       )''')
+            cur.execute("DROP TABLE IF EXISTS timestamps")
+        cur.execute('''
+                    CREATE TABLE IF NOT EXISTS timestamps
+                    (
+                        library_id INTEGER NULL,
+                        path       TEXT    NOT NULL,
+                        mtime      INTEGER NOT NULL,
+                        PRIMARY KEY (library_id, path)
+                    )''')
+
+        maintenance_mode = os.getenv("UNMANIC_SQLITE_MAINTENANCE")
+        if not maintenance_mode:
+            maintenance_mode = "basic"
+        _perform_maintenance(cur, maintenance_mode)
+
+        conn.commit()
     conn.close()
 
 

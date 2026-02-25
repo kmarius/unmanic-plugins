@@ -7,7 +7,7 @@ from typing import Optional
 
 from unmanic.libs import common
 
-from . import PLUGIN_ID
+from . import PLUGIN_ID, logger
 
 # TODO: a way to clean up orphans
 
@@ -27,6 +27,18 @@ def _get_connection(reuse_connection=False) -> sqlite3.Connection:
         return sqlite3.connect(DB_PATH)
 
 
+def _perform_maintenance(cur: sqlite3.Cursor, mode: str):
+    if mode == "off":
+        return
+    if mode in ["basic", "full"]:
+        cur.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+        cur.execute('PRAGMA optimize')
+    else:
+        logger.error(f"Unknown UNMANIC_SQLITE_MAINTENANCE mode '{mode}'")
+    if mode == "full":
+        cur.execute('VACUUM')
+
+
 def init(tables: list[str]):
     if not os.path.exists(os.path.dirname(DB_PATH)):
         os.makedirs(os.path.dirname(DB_PATH))
@@ -42,6 +54,12 @@ def init(tables: list[str]):
                                last_update INTEGER NOT NULL,
                                data TEXT DEFAULT NULL
                            )''')
+
+        maintenance_mode = os.getenv("UNMANIC_SQLITE_MAINTENANCE")
+        if not maintenance_mode:
+            maintenance_mode = "basic"
+        _perform_maintenance(cur, maintenance_mode)
+
         conn.commit()
     conn.close()
 
