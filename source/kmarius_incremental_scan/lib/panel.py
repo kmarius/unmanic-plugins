@@ -150,8 +150,9 @@ def _test_files_in_lib(library_id: int, items: Collection[str]):
     frontend_messages.remove_item('libraryScanProgress')
 
     # ensure all file_queued events have been emitted
-    while not scanner.scheduledtasks.empty():
-        event.wait(0.25)
+    if hasattr(scanner, 'scheduledtasks'):
+        while not scanner.scheduledtasks.empty():
+            event.wait(0.25)
 
     values = []
     for path, mtime in get_files_tested(library_id, clear=True).items():
