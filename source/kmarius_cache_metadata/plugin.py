@@ -51,14 +51,14 @@ def on_library_management_file_test(data: FileTestData, **kwargs):
 
         res = cache.get(provider.name, path, mtime, reuse_connection=True)
 
-        if res:
+        if res is not None:
             if not quiet:
                 logger.info(f"Cached {provider.name} data found - {path}")
         else:
             if not quiet:
                 logger.info(f"No cached {provider.name} data found, refreshing - {path}")
             res = provider.run_prog(path)
-            if not res:
+            if res is None:
                 logger.error(f"Could not retrieve {provider.name} metadata - {path}")
             else:
                 cache.put(provider.name, path, mtime, res, reuse_connection=True)
