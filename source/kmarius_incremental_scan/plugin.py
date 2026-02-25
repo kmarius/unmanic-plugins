@@ -4,8 +4,9 @@ from typing import override
 from unmanic.libs.unmodels import Libraries
 from unmanic.libs.unplugins.settings import PluginSettings
 
-from kmarius_incremental_scan.lib.plugin_types import *
-from kmarius_incremental_scan.lib import timestamps, PLUGIN_ID, logger
+from kmarius_incremental_scan.lib.types import *
+from kmarius_incremental_scan.lib import timestamps, PLUGIN_ID, logger, remove_file_tested, get_files_tested, \
+    add_file_tested
 from kmarius_incremental_scan.lib.panel import Panel
 
 
@@ -117,7 +118,7 @@ class Settings(PluginSettings):
         form_settings.update({
             "quiet_incremental_scan": {
                 "label": "Reduce logging",
-                "description": "Don't log unchanged files and timestamp updates",
+                "description": "Don't log unchanged files, only timestamp updates.",
             },
         })
 
@@ -168,8 +169,7 @@ panel = Panel(Settings)
 settings = Settings()
 
 
-def is_file_unchanged(library_id: int, path: str) -> bool:
-    mtime = int(os.path.getmtime(path))
+def is_file_unchanged(library_id: int, path: str, mtime: int) -> bool:
     stored_timestamp = timestamps.get(library_id, path, reuse_connection=True)
     return stored_timestamp == mtime
 
@@ -189,29 +189,28 @@ def on_library_management_file_test(data: FileTestData, **kwargs):
 
     quiet = settings.get_setting("quiet_incremental_scan")
 
-    if is_file_unchanged(library_id, path):
+    mtime = int(os.path.getmtime(path))
+    if is_file_unchanged(library_id, path, mtime):
         if not quiet:
             data["issues"].append({
                 'id': PLUGIN_ID,
                 'message': f"unchanged: library_id={library_id} path={path}",
             })
         data['add_file_to_pending_tasks'] = False
-    else:
-        data["shared_info"]["quiet_incremental_scan"] = quiet
+        return
+    add_file_tested(library_id, path, mtime)
 
 
 def on_postprocessor_task_results(data: TaskResultData, **kwargs):
     # we are assuming here that all output files belong to the same library
     # and that we don't want to test it again in the future
 
-    quiet = settings.get_setting("quiet_incremental_scan")
-
     if data["task_processing_success"] and data["file_move_processes_success"]:
         library_id = data["library_id"]
         for path in data["destination_files"]:
             try:
                 mtime = update_timestamp(library_id, path)
-                if mtime and not quiet:
+                if mtime:
                     logger.info(f"Updated timestamp library_id={library_id} path={path} to {mtime}")
             except Exception as e:
                 logger.error(e)
@@ -223,3 +222,18 @@ def render_frontend_panel(data: PanelData, **kwargs):
 
 def render_plugin_api(data: PluginApiData, **kwargs):
     panel.render_plugin_api(data)
+
+
+def emit_file_queued(data: FileQueuedData, **kwargs):
+    remove_file_tested(data["library_id"], data["file_path"])
+
+
+def emit_scan_complete(data: ScanCompleteData, **kwargs):
+    library_id = data["library_id"]
+
+    # update timestamps of all files that were tested but not queued
+    values = []
+    for path, mtime in get_files_tested(library_id, clear=True).items():
+        logger.info(f"Updating timestamp library_id={library_id} path={path} to {mtime} (no processing requested)")
+        values.append((library_id, path, mtime))
+    timestamps.put_many(values)

@@ -1,3 +1,6 @@
+**<span style="color:#56adda">0.4.0</span>**
+- deprecation
+
 **<span style="color:#56adda">0.3.1</span>**
 - update to new runner signatures
 

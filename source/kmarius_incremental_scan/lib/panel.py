@@ -12,7 +12,7 @@ from unmanic.libs.filetest import FileTesterThread
 from unmanic.libs.libraryscanner import LibraryScannerManager
 from unmanic.libs.unmodels import Libraries
 
-from .plugin_types import *
+from .types import *
 from . import timestamps, logger
 
 

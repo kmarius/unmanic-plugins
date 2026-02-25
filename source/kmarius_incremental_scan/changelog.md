@@ -1,3 +1,7 @@
+**<span style="color:#56adda">0.5.0</span>**
+- use new runner types, makes this plugin standalone
+- update types.py
+
 **<span style="color:#56adda">0.4.3</span>**
 - update to new runner signatures
 
