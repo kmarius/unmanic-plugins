@@ -1,3 +1,6 @@
+**<span style="color:#56adda">0.4.3</span>**
+- update to new runner signatures
+
 **<span style="color:#56adda">0.4.2</span>**
 - add logging output for updating and resetting timestamps
 

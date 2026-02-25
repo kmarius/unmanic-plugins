@@ -183,7 +183,7 @@ def update_timestamp(library_id: int, path: str) -> int | None:
         logger.error(e)
 
 
-def on_library_management_file_test(data: FileTestData):
+def on_library_management_file_test(data: FileTestData, **kwargs):
     library_id = data.get('library_id')
     path = data.get("path")
 
@@ -200,7 +200,7 @@ def on_library_management_file_test(data: FileTestData):
         data["shared_info"]["quiet_incremental_scan"] = quiet
 
 
-def on_postprocessor_task_results(data: TaskResultData):
+def on_postprocessor_task_results(data: TaskResultData, **kwargs):
     # we are assuming here that all output files belong to the same library
     # and that we don't want to test it again in the future
 
@@ -217,9 +217,9 @@ def on_postprocessor_task_results(data: TaskResultData):
                 logger.error(e)
 
 
-def render_frontend_panel(data: PanelData):
+def render_frontend_panel(data: PanelData, **kwargs):
     panel.render_frontend_panel(data)
 
 
-def render_plugin_api(data: PluginApiData):
+def render_plugin_api(data: PluginApiData, **kwargs):
     panel.render_plugin_api(data)

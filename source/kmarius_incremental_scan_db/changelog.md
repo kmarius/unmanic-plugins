@@ -1,3 +1,6 @@
+**<span style="color:#56adda">0.3.1</span>**
+- update to new runner signatures
+
 **<span style="color:#56adda">0.3.0</span>**
 - don't log when `kmarius_incremental_scan` is configured not to
 

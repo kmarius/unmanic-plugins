@@ -17,7 +17,7 @@ def update_timestamp(library_id: int, path: str) -> int | None:
         logger.error(e)
 
 
-def on_library_management_file_test(data: FileTestData):
+def on_library_management_file_test(data: FileTestData, **kwargs):
     quiet = data["shared_info"].get("quiet_incremental_scan", False)
     library_id = data["library_id"]
     path = data["path"]

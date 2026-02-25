@@ -3,7 +3,7 @@ import os
 from unmanic.libs.unplugins.settings import PluginSettings
 
 from kmarius_cache_metadata.lib.metadata_provider import PROVIDERS
-from kmarius_cache_metadata.lib.plugin_types import *
+from kmarius_cache_metadata.lib.types import *
 from kmarius_cache_metadata.lib import logger, cache
 
 cache.init([provider.name for provider in PROVIDERS])
@@ -38,7 +38,7 @@ class Settings(PluginSettings):
         self.settings, self.form_settings = self.__build_settings()
 
 
-def on_library_management_file_test(data: FileTestData):
+def on_library_management_file_test(data: FileTestData, **kwargs):
     settings = Settings(library_id=data["library_id"])
 
     path = data["path"]
@@ -58,11 +58,10 @@ def on_library_management_file_test(data: FileTestData):
             if not quiet:
                 logger.info(f"No cached {provider.name} data found, refreshing - {path}")
             res = provider.run_prog(path)
-            if res:
-                cache.put(provider.name, path, mtime, res, reuse_connection=True)
+            if not res:
+                logger.error(f"Could not retrieve {provider.name} metadata - {path}")
             else:
-                if not quiet:
-                    logger.error(f"Could not retrieve {provider.name} metadata - {path}")
+                cache.put(provider.name, path, mtime, res, reuse_connection=True)
 
         if res:
             data["shared_info"][provider.name] = res
