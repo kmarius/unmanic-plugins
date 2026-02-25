@@ -6,14 +6,15 @@ import threading
 import time
 import traceback
 import uuid
-from typing import Mapping, Optional, Set
+from typing import Mapping, Optional, Set, Collection
 
 from unmanic.libs.filetest import FileTesterThread
+from unmanic.libs.frontend_push_messages import FrontendPushMessages
 from unmanic.libs.libraryscanner import LibraryScannerManager
 from unmanic.libs.unmodels import Libraries
 
 from .types import *
-from . import timestamps, logger
+from . import timestamps, logger, get_files_tested
 
 
 def critical(f):
@@ -75,30 +76,30 @@ def _get_icon(name: str) -> str:
         return "bi bi-file-earmark"
 
 
-def _test_files_in_lib(library_id: int, items: Set[str]):
+def _test_files_in_lib(library_id: int, items: Collection[str]):
     num_files = len(items)
     if num_files == 0:
         return
 
-    libraryscanner = _get_libraryscanner()
-    num_threads = libraryscanner.settings.get_concurrent_file_testers()
+    scanner = _get_libraryscanner()
+    num_threads = scanner.settings.get_concurrent_file_testers()
 
     # pre-fill queue
     files_to_test = queue.Queue()
+    files_to_process = queue.Queue()
     for item in items:
         files_to_test.put(item)
-    files_to_process = queue.Queue()
 
-    event = libraryscanner.event
+    event = scanner.event
     status_updates = queue.Queue()
-    frontend_messages = libraryscanner.data_queues.get('frontend_messages')
+    frontend_messages = FrontendPushMessages()
 
     def send_frontend_message(message):
         frontend_messages.update(
             {
-                'id':      'libraryScanProgress',
-                'type':    'status',
-                'code':    'libraryScanProgress',
+                'id': 'libraryScanProgress',
+                'type': 'status',
+                'code': 'libraryScanProgress',
                 'message': message,
                 'timeout': 0
             }
@@ -114,9 +115,8 @@ def _test_files_in_lib(library_id: int, items: Set[str]):
         tester.start()
         threads.append(tester)
 
-    def queue_up_result(item):
-        libraryscanner.add_path_to_queue(
-            item.get('path'), library_id, item.get('priority_score'))
+    def queue_up_result(item: dict):
+        scanner.add_path_to_queue(item.get('path'), library_id, item.get('priority_score'))
 
     current_file = ''
     while not files_to_test.empty():
@@ -148,6 +148,16 @@ def _test_files_in_lib(library_id: int, items: Set[str]):
         queue_up_result(files_to_process.get())
 
     frontend_messages.remove_item('libraryScanProgress')
+
+    # ensure all file_queued events have been emitted
+    while not scanner.scheduledtasks.empty():
+        event.wait(0.25)
+
+    values = []
+    for path, mtime in get_files_tested(library_id, clear=True).items():
+        logger.info(f"Updating timestamp library_id={library_id} path={path} to {mtime} (no processing requested)")
+        values.append((library_id, path, mtime))
+    timestamps.put_many(values)
 
 
 @critical
@@ -288,11 +298,11 @@ class Panel:
                         if entry.is_dir():
                             if lazy:
                                 children.append({
-                                    "title":      name,
+                                    "title": name,
                                     "library_id": library_id,
-                                    "path":       abspath,
-                                    "lazy":       True,
-                                    "type":       "folder",
+                                    "path": abspath,
+                                    "lazy": True,
+                                    "type": "folder",
                                 })
                             else:
                                 child = self._load_subtree(abspath, name, library_id,
@@ -304,12 +314,12 @@ class Panel:
                             if self._is_in_library(library_id, abspath):
                                 file_info = os.stat(abspath)
                                 files.append({
-                                    "title":      name,
+                                    "title": name,
                                     "library_id": library_id,
-                                    "path":       abspath,
-                                    "mtime":      int(file_info.st_mtime),
-                                    "size":       int(file_info.st_size),
-                                    "icon":       _get_icon(name),
+                                    "path": abspath,
+                                    "mtime": int(file_info.st_mtime),
+                                    "size": int(file_info.st_size),
+                                    "icon": _get_icon(name),
                                 })
 
             children.sort(key=lambda c: c["title"])
@@ -327,11 +337,11 @@ class Panel:
             children += files
 
         return {
-            "title":      title,
-            "children":   children,
+            "title": title,
+            "children": children,
             "library_id": library_id,
-            "path":       path,
-            "type":       "folder",
+            "path": path,
+            "type": "folder",
         }
 
     def _get_subtree(self, arguments: dict) -> dict:
@@ -436,11 +446,11 @@ class Panel:
         libraries = []
         for lib in Libraries().select().where(Libraries.enable_remote_only == False):
             libraries.append({
-                "title":      lib.name,
+                "title": lib.name,
                 "library_id": lib.id,
-                "path":       lib.path,
-                "type":       "folder",
-                "lazy":       lazy,
+                "path": lib.path,
+                "type": "folder",
+                "lazy": lazy,
             })
 
         return {
@@ -462,7 +472,8 @@ class Panel:
         data["content_type"] = "text/html"
 
         # TODO: change PLUGIN_ID in the served file so we can re-use index.html
-        with open(os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'index.html'))) as file:
+        with open(os.path.abspath(
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'index.html'))) as file:
             content = file.read()
             data['content'] = content.replace("{cache_buster}", str(uuid.uuid4()))
 
@@ -499,13 +510,13 @@ class Panel:
             else:
                 data["content"] = {
                     "success": False,
-                    "error":   f"unknown path: {data['path']}",
+                    "error": f"unknown path: {data['path']}",
                 }
         except Exception as e:
             trace = traceback.format_exc()
             logger.error(trace)
             data["content"] = {
                 "success": False,
-                "error":   str(e),
-                "trace":   trace,
+                "error": str(e),
+                "trace": trace,
             }
