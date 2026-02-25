@@ -89,23 +89,25 @@ def _get_connection(reuse_connection=False) -> sqlite3.Connection:
 def put(library_id: int, path: str, mtime: int):
     conn = _get_connection()
     cur = conn.cursor()
-    cur.execute('''
-                INSERT INTO timestamps (library_id, path, mtime)
-                VALUES (?, ?, ?)
-                ON CONFLICT(library_id, path) DO UPDATE SET mtime = excluded.mtime
-                ''', (library_id, path, mtime))
-    conn.commit()
-
-
-def put_many(values: list[(int, str, int)]):
-    conn = _get_connection()
-    cur = conn.cursor()
-    cur.executemany('''
+    with conn:
+        cur.execute('''
                     INSERT INTO timestamps (library_id, path, mtime)
                     VALUES (?, ?, ?)
                     ON CONFLICT(library_id, path) DO UPDATE SET mtime = excluded.mtime
-                    ''', values)
-    conn.commit()
+                    ''', (library_id, path, mtime))
+        conn.commit()
+
+
+def put_many(values: list[Tuple[int, str, int]]):
+    conn = _get_connection()
+    cur = conn.cursor()
+    with conn:
+        cur.executemany('''
+                        INSERT INTO timestamps (library_id, path, mtime)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(library_id, path) DO UPDATE SET mtime = excluded.mtime
+                        ''', values)
+        conn.commit()
 
 
 def get(library_id: int, path: str, reuse_connection=False):
