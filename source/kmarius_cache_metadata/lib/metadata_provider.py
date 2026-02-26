@@ -16,6 +16,10 @@ class MetadataProvider:
     def run_prog(path: str) -> Optional[dict]:
         raise NotImplementedError()
 
+    @staticmethod
+    def is_admissible(path: str) -> bool:
+        return True
+
 
 class FFprobeProvider(MetadataProvider):
     name = "ffprobe"

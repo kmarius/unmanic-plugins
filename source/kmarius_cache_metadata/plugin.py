@@ -49,6 +49,9 @@ def on_library_management_file_test(data: FileTestData, **kwargs):
         if not settings.get_setting(f"enable_{provider.name}_caching"):
             continue
 
+        if not provider.is_admissible(path):
+            continue
+
         res = cache.get(provider.name, path, mtime, reuse_connection=True)
 
         if res is not None:
