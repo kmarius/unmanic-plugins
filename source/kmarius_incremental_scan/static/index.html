@@ -2,18 +2,23 @@
 <html>
 <head>
     <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
     />
     <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/wunderbaum@0/dist/wunderbaum.min.css"
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/wunderbaum@0/dist/wunderbaum.min.css"
     />
     <script
-        defer
-        src="https://cdn.jsdelivr.net/npm/wunderbaum@0/dist/wunderbaum.umd.min.js"
+            defer
+            src="https://cdn.jsdelivr.net/npm/wunderbaum@0/dist/wunderbaum.umd.min.js"
     ></script>
     <style>
+        /* sans-serif everywhere */
+        body {
+            font-family: sans-serif;
+        }
+
         section {
             margin-bottom: 8px; /* Adds space after the section, above the tree view */
         }
@@ -43,7 +48,11 @@
     </style>
     <script>
         const ENABLE_EXTENDED_ACTIONS = true;
-        const PLUGIN_ID = "kmarius_incremental_scan";
+
+        let match = window.location.href.match(/\/unmanic\/panel\/([^\/]+)\//);
+        if (match == null)
+            throw new Error("Could not determine plugin ID");
+        const PLUGIN_ID = match[1];
 
         const actions_default = `<select tabindex="-1">
                 <option value="reload">Refresh</option>
@@ -57,6 +66,7 @@
                 <option value="process">Process</option>
                 <option value="update-timestamp">Update Timestamp</option>
                 <option value="reset-timestamp">Reset Timestamp</option>
+                <option value="reset-test">Reset Timestamp & Test</option>
                 </select>`;
 
         const actions = ENABLE_EXTENDED_ACTIONS ? actions_extended : actions_default;
@@ -247,6 +257,23 @@
                     });
                     fakeResetTimestamps(nodes);
                     break;
+                case "reset-test":
+                    await fetch(buildUrl('/timestamp/reset'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    fakeResetTimestamps(nodes);
+                    await fetch(buildUrl('/test'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    break;
                 default:
                     console.log(`unrecognized action: ${operation}`);
             }
@@ -329,8 +356,8 @@
                 columns: [
                     {id: "*", title: "Path", width: "500px"},
                     {id: "size", title: "Size", width: "100px", classes: "wb-helper-end"},
-                    {id: "mtime", title: "Modification (disk)", width: "160px", classes: "wb-helper-end"},
-                    {id: "timestamp", title: "Timestamp (DB)", width: "160px", classes: "wb-helper-end"},
+                    {id: "mtime", title: "Modification", width: "150px", classes: "wb-helper-end"},
+                    {id: "timestamp", title: "Timestamp", width: "150px", classes: "wb-helper-end"},
                     {id: "action", title: "Action", width: "80px"},
                 ],
                 columnsResizable: true,
@@ -432,16 +459,16 @@
             <!-- <button id="expand-all" class="icon-button"><i class="bi bi-plus-square"></i></button> -->
             <!-- <button id="collapse-all" class="icon-button"><i class="bi bi-dash-square"></i></button> -->
             <button
-                id="toggle-expand-all"
-                class="icon-button"
-                title="Expand/Collapse all"
+                    id="toggle-expand-all"
+                    class="icon-button"
+                    title="Expand/Collapse all"
             >
               <i class="bi bi-plus-slash-minus"></i>
             </button>
             <button
-                id="toggle-select-all"
-                class="icon-button"
-                title="(De)Select all"
+                    id="toggle-select-all"
+                    class="icon-button"
+                    title="(De)Select all"
             >
               <i class="bi bi-check2-square"></i>
             </button>
@@ -449,17 +476,16 @@
               <i class="bi bi-box-arrow-in-up-right"></i>
             </button>
             &vert;
-            <label for="filter-query">Filter:</label>
             <input
-                id="filter-query"
-                type="search"
-                placeholder="Enter search query"
-                autofocus
+                    id="filter-query"
+                    type="search"
+                    placeholder="Enter search query"
+                    autofocus
             />
             <button
-                type="button"
-                id="filter-hide"
-                title="Hide/dim unmatched nodes"
+                    type="button"
+                    id="filter-hide"
+                    title="Hide/dim unmatched nodes"
             >
               <i class="bi bi-funnel"></i>
             </button>
@@ -469,6 +495,7 @@
             <button type="button" id="filter-next" title="Show next match">
               <i class="bi bi-chevron-down"></i>
             </button>
+            &vert;
             <button type="button" id="reload-tree" title="Reload tree">
               <i class="bi bi-arrow-clockwise"></i>
             </button>

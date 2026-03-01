@@ -13,16 +13,16 @@ from . import PLUGIN_ID, logger
 
 DB_PATH = os.path.join(common.get_home_dir(), ".unmanic", "userdata", PLUGIN_ID, "metadata.db")
 
-_threadlocal = threading.local()
+_local = threading.local()
 
 
 # NOTE: only reuse in short-lived threads like FileTester
 def _get_connection(reuse_connection=False) -> sqlite3.Connection:
     if reuse_connection:
-        if not hasattr(_threadlocal, "connection"):
-            _threadlocal.connection = sqlite3.connect(DB_PATH)
+        if not hasattr(_local, "connection"):
+            _local.connection = sqlite3.connect(DB_PATH)
 
-        return _threadlocal.connection
+        return _local.connection
     else:
         return sqlite3.connect(DB_PATH)
 
