@@ -164,7 +164,6 @@ class Settings(PluginSettings):
         return True
 
 
-timestamps.init()
 panel = Panel(Settings)
 settings = Settings()
 
