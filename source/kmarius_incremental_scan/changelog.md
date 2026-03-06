@@ -1,8 +1,9 @@
 **<span style="color:#56adda">0.5.0</span>**
 - use new runner types, makes this plugin standalone
-- update types.py
 - properly update timestamps if test started from panel
 - perform database maintenance according to UNMANIC_SQLITE_MAINTENANCE
+- add dark mode to panel
+- update types.py
 
 **<span style="color:#56adda">0.4.3</span>**
 - update to new runner signatures
