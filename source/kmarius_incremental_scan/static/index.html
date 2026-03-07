@@ -217,22 +217,27 @@
                 document.body.style.removeProperty("--wb-active-hover-color");
                 document.body.style.removeProperty("--wb-active-hover-color-grayscale");
             }
-            console.log("applied " + theme);
         }
 
         // observe theme changes
-        let observer = new MutationObserver(applyTheme);
-        observer.observe(parent.document.body, {
-            attributes: true,
-            attributeFilter: ['class'],
-        });
+        if (parent.document.body) {
+            let observer = new MutationObserver(applyTheme);
+            observer.observe(parent.document.body, {
+                attributes: true,
+                attributeFilter: ['class'],
+            });
+        }
 
-        const ENABLE_EXTENDED_ACTIONS = false;
-
-        let match = window.location.href.match(/\/unmanic\/panel\/([^\/]+)\//);
+        let match = window.location.href.match(/\/unmanic\/panel\/([^\/]+)/);
         if (match == null)
             throw new Error("Could not determine plugin ID");
         const PLUGIN_ID = match[1];
+
+        function buildUrl(path) {
+            return "/unmanic/plugin_api/" + PLUGIN_ID + path;
+        }
+
+        const ENABLE_EXTENDED_ACTIONS = false;
 
         const default_actions = `<select tabindex="-1">
                 <option value="reload" title="Reload data from disk and database">Refresh</option>
@@ -254,11 +259,7 @@
                 </select>`;
 
         const actions = ENABLE_EXTENDED_ACTIONS ? extended_actions : default_actions;
-        console.log(actions);
 
-        function buildUrl(path) {
-            return "/unmanic/plugin_api/" + PLUGIN_ID + path;
-        }
 
         function formatFileSize(bytes) {
             if (bytes === undefined)
