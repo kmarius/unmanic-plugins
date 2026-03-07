@@ -346,7 +346,13 @@ class Panel:
         }
 
     def _get_subtree(self, arguments: dict) -> dict:
-        library_id = int(arguments["library_id"][0])
+        library_id = arguments["library_id"][0].decode("utf-8")
+        if library_id == 'undefined':
+            return {
+                'title': 'undefined',
+                'children': [],
+            }
+        library_id = int(library_id)
         path = arguments["path"][0].decode('utf-8')
         title = arguments["title"][0].decode('utf-8')
 

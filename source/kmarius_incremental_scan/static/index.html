@@ -145,6 +145,7 @@
             background: rgba(255, 255, 255, 0.09);
             transition-duration: 0.1s;
         }
+
         html.dark .btn:hover {
             border: 1px solid rgba(255, 255, 255, 0.4);
             background: rgba(255, 255, 255, 0.09);
@@ -564,6 +565,13 @@
                         params: {path: e.node.data.path, library_id: e.node.data.library_id, title: e.node.data.title}
                     };
                 },
+                load: function (e) {
+                    // new data loaded, re-apply filter if needed
+                    let value = document.getElementById('filter-query').value.trim();
+                    if (value != "") {
+                        mar10.Wunderbaum.getTree("files").filterNodes(value, {});
+                    }
+                },
                 filter: {
                     autoApply: true,
                     mode: "hide",
@@ -573,7 +581,8 @@
                         nextButton: "#filter-next",
                         prevButton: "#filter-prev",
                         matchInfoElem: "#filter-match-info",
-                    }
+                    },
+                    noData: false,
                 },
                 change: async function (e) {
                     const util = e.util;
