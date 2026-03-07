@@ -226,30 +226,35 @@
             attributes: true,
             attributeFilter: ['class'],
         });
-        const ENABLE_EXTENDED_ACTIONS = true;
+
+        const ENABLE_EXTENDED_ACTIONS = false;
 
         let match = window.location.href.match(/\/unmanic\/panel\/([^\/]+)\//);
         if (match == null)
             throw new Error("Could not determine plugin ID");
         const PLUGIN_ID = match[1];
 
-        const actions_default = `<select tabindex="-1">
-                <option value="reload">Refresh</option>
-                <option value="update-timestamp">Update Timestamp</option>
-                <option value="reset-timestamp">Reset Timestamp</option>
+        const default_actions = `<select tabindex="-1">
+                <option value="reload" title="Reload data from disk and database">Refresh</option>
+                <option value="test" title="Run test flow on selected files">Test</option>
+                <option value="process" title="Add selected files to task queue">Process</option>
+                <option value="update-timestamp" title="Update stored timestamps to the values on disk (files will be skipped)">Update Timestamp</option>
+                <option value="reset-timestamp" title="Reset stored timestamps (files will not be skipped)">Reset Timestamp</option>
+                <option value="reset-test" title="Reset stored timestamps and test files">Reset Timestamp & Test</option>
                 </select>`;
 
-        const actions_extended = `<select tabindex="-1">
-                <option value="reload">Refresh</option>
-                <option value="test">Test</option>
-                <option value="process">Process</option>
-                <option value="update-timestamp">Update Timestamp</option>
-                <option value="reset-timestamp">Reset Timestamp</option>
-                <option value="reset-metadata-timestamp">Reset Metadata</option>
-                <option value="reset-test">Reset Timestamp & Test</option>
+        const extended_actions = `<select tabindex="-1">
+                <option value="reload" title="Reload data from disk and database">Refresh</option>
+                <option value="test" title="Run test flow on selected files">Test</option>
+                <option value="process" title="Add selected files to task queue">Process</option>
+                <option value="reset-metadata-timestamp" title="Reset cached metadata">Reset Metadata</option>
+                <option value="update-timestamp" title="Update stored timestamps to the values on disk (files will be skipped)">Update Timestamp</option>
+                <option value="reset-timestamp" title="Reset stored timestamps (files will not be skipped)">Reset Timestamp</option>
+                <option value="reset-test" title="Reset stored timestamps and test files">Reset Timestamp & Test</option>
                 </select>`;
 
-        const actions = ENABLE_EXTENDED_ACTIONS ? actions_extended : actions_default;
+        const actions = ENABLE_EXTENDED_ACTIONS ? extended_actions : default_actions;
+        console.log(actions);
 
         function buildUrl(path) {
             return "/unmanic/plugin_api/" + PLUGIN_ID + path;
